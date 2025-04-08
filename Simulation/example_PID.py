@@ -106,6 +106,28 @@ def compute_right_lane_point(lines, y_target, image_width):
     return np.mean(right_x) # در نهایت میانگین میگیریم
 
 
+<<<<<<< Updated upstream
+=======
+def compute_left_lane_point(lines, y_target, image_width):
+    left_x = []
+    if lines is not None:
+        for line in lines:
+            for x1, y1, x2, y2 in line:
+                # انتخاب خطوطی که احتمالاً مربوط به خط راست هستند؛ فرض بر این است که آنها در سمت راست قرار دارند.
+                # لذا قطعا آنها در سه چهارم دیگر صفحه هستند
+                if x1 < image_width * (0.75) and x2 < image_width * (0.75):
+                    # اگر خط از y_target عبور می‌کند (تفاوت علامتی)
+                    if (y1 - y_target) * (y2 - y_target) <= 0:
+                        # محاسبه نقطه‌ی تقاطع خط با y_target
+                        if (y2 - y1) != 0:
+                            x_intersect = x1 + (x2 - x1) * ((y_target - y1) / (y2 - y1))
+                            left_x.append(x_intersect)
+    if len(left_x) == 0:
+        return 10  # در صورت عدم شناسایی، فرض می‌کنیم خط در سمت راست تصویر قرار دارد و مقداری را هم به آن اضافه میکنیم
+    return np.mean(left_x) # در نهایت میانگین میگیریم
+
+pid = PID(Kp=4, Ki=0.005, Kd=2.5)
+>>>>>>> Stashed changes
 # تابع اصلی پردازش تصویر و محاسبه زاویه فرمان
 def process_image_and_compute_steering(image, offset=50):
     """
@@ -116,6 +138,8 @@ def process_image_and_compute_steering(image, offset=50):
         return None
 
     height, width = image.shape[:2]
+
+    obstacles : bool = (offset > 0)
     
     # با فیلتر اچ اس وی دیگر نیازی به خاکستری کردن رنگ نیست
     hsv_filtered = hsv_mask(image)
@@ -125,8 +149,13 @@ def process_image_and_compute_steering(image, offset=50):
     src_points = np.float32(
         [
             [
+<<<<<<< Updated upstream
                 (width // 2 - 85, (height // 2) - 28),
                 ((width // 2) + 85, (height // 2) - 28),
+=======
+                (width // 2 - 80, (height // 2)),
+                ((width // 2) + 85, (height // 2)),
+>>>>>>> Stashed changes
                 (width, height - 100),
                 (0, height - 100),
             ]
@@ -145,10 +174,10 @@ def process_image_and_compute_steering(image, offset=50):
         print("هیچ خطی شناسایی نشد.")
 
     y_target = int(height * 0.875)
-    right_lane_point = compute_right_lane_point(lines, y_target, width)
+    right_lane_point = compute_left_lane_point(lines, y_target, width) if obstacles else compute_right_lane_point(lines, y_target, width)
 
     # موقعیت مطلوب خودرو: فاصله ایمن از خط راست (خط مطلوب = نقطه روی خط راست - offset)
-    desired_position = right_lane_point - offset
+    desired_position = right_lane_point + offset
 
     # مرکز تصویر به عنوان موقعیت فعلی خودرو
     center_position = width / 2.0
@@ -216,10 +245,24 @@ try:
             sensors = car.getSensors()
 
             image = car.getImage()
-            steering = process_image_and_compute_steering(image, 185)
+
+            m, r= sensors[1], sensors[2]
+            kir = -185
+
+            if m <= 1499 or r <= 1200:
+                car.setSensorAngle(10)
+                kir = 185
+            else:
+                kir = -185
+
+            steering = process_image_and_compute_steering(image, kir)
             
             if abs(steering - prev_steering) > 2.5 or abs(steering) > 20:
+<<<<<<< Updated upstream
                 car.setSpeed(20)
+=======
+                car.setSpeed(50)
+>>>>>>> Stashed changes
                 print("stop")
             else:
                 car.setSpeed(3000)
