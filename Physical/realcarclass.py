@@ -1,3 +1,5 @@
+import pyfirmata
+import RPi.GPIO
 from pyfirmata import Arduino,util
 from pyfirmata.pyfirmata import Board
 import cv2
@@ -5,7 +7,6 @@ import time
 import numpy as np
 import oop 
 class Car():
-    
     def __init__(self,motor11,motor12,motor21,motor22,ina1,ina2,Servo):
         port = Arduino('com3')
         self.motor11 = port.get_pin(motor11)
@@ -19,10 +20,20 @@ class Car():
         camera.set(cv2.CAP_PROP_FRAME_WIDTH,512)
         camera.set(cv2.CAP_PROP_FRAME_HEIGHT,512)
         camera.set(cv2.CAP_PROP_FPS,60)
-        obot = Car('d:2:o','d:4:o','d:7:o','d:5:o','d:3:p','d:6:p','d:9:s')
-        return(motor11,motor12,motor21,motor22,camera,Car)
+        self.TRING_LEFT = 23
+        self.ECHO_LEFT = 24   
+        self.TRIG_MID = 17    
+        self.ECHO_MID = 27    
+        self.TRIG_RIGHT = 22  
+        self.ECHO_RIGHT = 10
+        RPi.GPIO.setmode(RPi.GPIO.BCM)
+        for trig in [self.TRIG_LEFT, self.TRIG_MID, self.TRIG_RIGHT]:
+            RPi.GPIO.setup(trig, RPi.GPIO.OUT)
+            RPi.GPIO.output(trig, False)
+        for echo in [self.ECHO_LEFT, self.ECHO_MID, self.ECHO_RIGHT]:
+            RPi.GPIO.setup(echo, RPi.GPIO.IN)
+        return(motor11,motor12,motor21,motor22,camera,Servo)
     def forward(self,speed1=1,speed2=1,servo=90):
-        
         self.motor11.write(1)
         self.motor12.write(0)
         self.motor21.write(0)
@@ -31,7 +42,6 @@ class Car():
         self.ina2.write(speed2)
         self.Servo.write(servo)
     def back(self,speed1=1,speed2=1,servo=90):
-
         self.motor11.write(0)
         self.motor12.write(1)
         self.motor21.write(1)
@@ -40,7 +50,6 @@ class Car():
         self.ina2.write(speed2)
         self.Servo.write(servo)
     def right(self,speed1=.8,speed2=.6,servo=110):
-
         self.motor11.write(1)
         self.motor12.write(0)
         self.motor21.write(0)
@@ -49,7 +58,6 @@ class Car():
         self.ina2.write(speed2)
         self.Servo.write(servo)
     def left(self,speed1=.6,speed2=.8,servo=70):
-
         self.motor11.write(1)
         self.motor12.write(0)
         self.motor21.write(0)
@@ -58,7 +66,6 @@ class Car():
         self.ina2.write(speed2)
         self.Servo.write(servo)
     def stop(self,speed1=0,speed2=0,servo=90):
-
         self.motor11.write(1)
         self.motor12.write(1)
         self.motor21.write(1)
@@ -66,7 +73,6 @@ class Car():
         self.ina1.write(speed1)
         self.ina2.write(speed2)
         self.Servo.write(servo)
-
     #Attributes to kind of replicate a Pub-sub pattern messaging to request data  
     steering_value = 0
     speed_value = 0
@@ -74,27 +80,21 @@ class Car():
     image_mode = 1
     get_Speed = 1
     sensor_angle = 30
-    
     image =  None
     sensors = None
     current_speed = None
-
-        
 def setSteering(self, steering):
-
     # Limit steering input to -100 to +100
     if steering > 100:
         steering = 100
     elif steering < -100:
         steering = -100
-        
     if steering >= 0:
         # Map 0 to +100 range to 90 to 70 degrees (right)
         servo_angle = 90 - (steering * 0.2)  # 0.2 = (90-70)/100
     else:
         # Map -100 to 0 range to 110 to 90 degrees (left) 
         servo_angle = 90 - (steering * 0.2)  # 0.2 = (110-90)/100
-        
     self.Servo.write(servo_angle)
     self.steering_value = steering
     self.image_mode = 0
@@ -102,132 +102,83 @@ def setSteering(self, steering):
     self.updateData()
     self.sock.sendall(self.data_str.encode("utf-8"))
     time.sleep(0.01)
-
-    def setSpeed(self,speed):
-        '''
-        تنظیم سرعت خودرو
-        ورودی:
-            speed: عدد صحیح - مقدار سرعت مورد نظر
-        عملکرد:
-            - تنظیم مقدار سرعت در متغیر speed_value 
-            - غیرفعال کردن حالت تصویر (image_mode = 0)
-            - غیرفعال کردن وضعیت سنسور (sensor_status = 0) 
-            - به‌روزرسانی داده‌ها با updateData()
-            - ارسال داده‌ها به سرور از طریق سوکت
-            - تاخیر 0.01 ثانیه‌ای
-        '''
-        self.speed_value = speed
-        self.image_mode = 0
-        self.sensor_status = 0
-        self.updateData()
-        self.sock.sendall(self.data_str.encode("utf-8"))
-        time.sleep(0.01)
-
-    def setSensorAngle(self, angle):
-        '''
-        تنظیم زاویه بین پرتوهای سنسور
-        ورودی:
-            angle: عدد صحیح - زاویه بر حسب درجه
-        عملکرد:
-            - غیرفعال کردن حالت تصویر
-            - غیرفعال کردن وضعیت سنسور
-            - تنظیم زاویه سنسور جدید
-            - به‌روزرسانی و ارسال داده‌ها
-        '''
-        self.image_mode = 0
-        self.sensor_status = 0
-        self.sensor_angle = angle
-        self.updateData()
-        self.sock.sendall(self.data_str.encode("utf-8"))
+def setSpeed(self, speed):
+    '''
+    Sets the speed of both DC motors
+    Parameters:
+        speed: int between -100 (full reverse) and +100 (full forward)
+        0 means stop
+    '''
+    # Limit speed input to -100 to +100
+    if speed > 100:
+        speed = 100
+    elif speed < -100:
+        speed = -100
         
-    def getData(self):
-        '''
-        دریافت داده‌ها از شبیه‌ساز
-        عملکرد:
-            - فعال کردن حالت تصویر و سنسور
-            - به‌روزرسانی داده‌ها
-            - ارسال درخواست به سرور
-            - دریافت و پردازش پاسخ شامل:
-                * تصویر دوربین
-                * داده‌های سنسور
-                * سرعت فعلی
-        '''
-        self.image_mode = 1
-        self.sensor_status = 1
-        self.updateData()
-        self.sock.sendall(self.data_str.encode("utf-8"))
+    # Convert percentage to 0-1 range for motor control
+    speed_value = abs(speed) / 100.0
+    
+    if speed >= 0:  # Forward
+        self.motor11.write(1)
+        self.motor12.write(0)
+        self.motor21.write(0)
+        self.motor22.write(1)
+    else:  # Backward
+        self.motor11.write(0)
+        self.motor12.write(1)
+        self.motor21.write(1)
+        self.motor22.write(0)
+    
+    # Set motor speeds
+    self.ina1.write(speed_value)  # Left motor
+    self.ina2.write(speed_value)  # Right motor
+    
+    self.speed_value = speed
+    self.image_mode = 0
+    self.sensor_status = 0
+    self.updateData()
+    self.sock.sendall(self.data_str.encode("utf-8"))
+    time.sleep(0.01)
 
-        receive = self.recvall(self.sock)
+def measure_distance(self, trigger, echo):
+    RPi.GPIO.output(trigger, True)
+    time.sleep(0.00001)
+    RPi.GPIO.output(trigger, False)
 
-        imageTagCheck = re.search('<image>(.*?)<\/image>', receive)
-        sensorTagCheck = re.search('<sensor>(.*?)<\/sensor>', receive)
-        speedTagCheck = re.search('<speed>(.*?)<\/speed>', receive)            
-        
-        try:
-            if(imageTagCheck):
-                imageData = imageTagCheck.group(1)
-                im_bytes = base64.b64decode(imageData)
-                im_arr = np.frombuffer(im_bytes, dtype=np.uint8)  # im_arr is one-dim Numpy array
-                imageOpenCV = cv2.imdecode(im_arr, flags=cv2.IMREAD_COLOR)
-                self.image = imageOpenCV
-            
-            if(sensorTagCheck):
-                sensorData = sensorTagCheck.group(1)
-                sensor_arr = re.findall("\d+", sensorData)
-                sensor_int_arr = list(map(int, sensor_arr)) 
-                self.sensors = sensor_int_arr
-            else:
-                self.sensors = [1500,1500,1500]
-
-            if(speedTagCheck):
-                current_sp = speedTagCheck.group(1)
-                self.current_speed = int(current_sp)
-            else:
-                self.current_speed = 0
-        except:
-            print("Failed to receive data")
-
-
+    pulse_start = time.time()
+    timeout_start = time.time()
+    while RPi.GPIO.input(echo) == 0:
+        pulse_start = time.time()
+        if time.time() - timeout_start > 0.1:  # timeout after 100ms
+            return 400.0
+    pulse_end = time.time()
+    while RPi.GPIO.input(echo) == 1:
+        pulse_end = time.time()
+        if time.time() - pulse_start > 0.1:  # timeout after 100ms
+            return 400.0
+    pulse_duration = pulse_end - pulse_start
+    distance = pulse_duration * 17150  
+    
+    return round(min(distance, 100.0), 1)  
     def getImage(self):
-        '''
-        Returns the image from the camera
-        '''
-        return self.image
-
+        ret, frame = self.camera.read()
+        if ret:
+            return frame
+        return None
     def getSensors(self):
-        '''
-        Returns the sensor data
-            A List: 
-                [Left Sensor: int, Middle Sensor: int, Right Sensor: int]
-        '''
-        return self.sensors
-    
+        time.sleep(0.05) 
+        left = self.measure_distance(self.TRIG_LEFT, self.ECHO_LEFT)
+        middle = self.measure_distance(self.TRIG_MID, self.ECHO_MID)
+        right = self.measure_distance(self.TRIG_RIGHT, self.ECHO_RIGHT)
+    return [left, middle, right]
     def getSpeed(self):
-        '''
-        Returns the speed of the car
-        '''
         return self.current_speed
-    
-    def updateData(self):
-        '''
-        Updating the request data array and data string
-        '''
-        data = [self.speed_value,self.steering_value,self.image_mode,self.sensor_status,self.get_Speed, self.sensor_angle]
-        self.data_str = self._data_format.format(data[0], data[1], data[2], data[3], data[4], data[5])
-        
     def stop(self):
-        '''
-        Stoping the car and closing the socket
-        '''
-        self.setSpeed(0)
-        self.setSteering(0)
-        self.sock.sendall("stop".encode("utf-8"))
-        self.sock.close()
+        stop()
         print("Process stopped successfully!")
-    
     def __del__(self):
         self.stop()
-
+        RPi.GPIO.cleanup()
 
 
 
