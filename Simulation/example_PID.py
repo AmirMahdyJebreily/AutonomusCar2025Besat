@@ -151,10 +151,10 @@ def bird_eye_view_transform(image, src_points, dst_points, output_size):
 def hsv_mask(image):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # حد بالا و پایین سفید بودن رنگ خطوط
-    lower_yellow = np.array([41, 56, 51], dtype=np.uint8)
-    upper_yellow = np.array([44, 68, 41], dtype=np.uint8)  # ترتیب V ممکن است معکوس شود
-    mask = cv2.inRange(hsv,lower_yellow, upper_yellow)
+    # حد بالا و پایین سفید بودن رنگ خطوط
+    lower_white = np.array([0, 0, 190], dtype=np.uint8)
+    upper_white = np.array([180, 50, 255], dtype=np.uint8)
+    mask = cv2.inRange(hsv, lower_white, upper_white)
     return mask
 
 
@@ -388,8 +388,8 @@ def get_steering_at_progress(
 # Sleep for 3 seconds to make sure that client connected to the simulator
 time.sleep(3)
 
-RIGHT_OFFSET = 160
-LEFT_OFFSET = -220
+RIGHT_OFFSET = -160
+LEFT_OFFSET = 220
 D_T = 0.0001
 
 obsterCount = 0
